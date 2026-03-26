@@ -66,14 +66,6 @@ users.update({ name: "Luca" }, { $inc: { age: 1 } })
 
 ---
 
-# ⚙️ Possibili Estensioni
-- Cache in memoria per migliorare le performance
-- Gestione concorrenza scritture
-- Altri operatori Mongo avanzati
-- Funzioni `updateMany`, `deleteMany`
-
----
-
 # 🚀 Esempio Completo
 
 ```js
