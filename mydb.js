@@ -3,6 +3,7 @@ const pathModule = require("path")
 
 function db(path) {
   const fullPath = pathModule.resolve(path)
+  let cache = null  // cache in memoria
 
   // Crea database se non esiste
   if (!fs.existsSync(fullPath)) {
@@ -10,11 +11,14 @@ function db(path) {
   }
 
   function read() {
+    if (cache) return cache
     const data = fs.readFileSync(fullPath, "utf-8")
-    return JSON.parse(data || "{}")
+    cache = JSON.parse(data || "{}")
+    return cache
   }
 
   function write(data) {
+    cache = data
     fs.writeFileSync(fullPath, JSON.stringify(data, null, 2))
   }
 
@@ -26,7 +30,30 @@ function db(path) {
   }
 
   function matchFilter(doc, filter) {
-    return Object.keys(filter).every(key => doc[key] === filter[key])
+    return Object.keys(filter).every(key => {
+      const value = filter[key]
+      if (typeof value === "object" && value !== null) {
+        // operatori $gt, $lt
+        if ('$gt' in value) return doc[key] > value['$gt']
+        if ('$lt' in value) return doc[key] < value['$lt']
+      }
+      return doc[key] === value
+    })
+  }
+
+  function applyUpdate(doc, updateFields) {
+    const result = { ...doc }
+    for (const key in updateFields) {
+      const value = updateFields[key]
+      if (typeof value === "object" && value !== null) {
+        // operatori $set e $inc
+        if ('$set' in value) result[key] = value['$set']
+        if ('$inc' in value) result[key] += value['$inc']
+      } else {
+        result[key] = value
+      }
+    }
+    return result
   }
 
   return {
@@ -130,7 +157,23 @@ function db(path) {
           data[name] = data[name].map(doc => {
             if (matchFilter(doc, filter)) {
               updatedCount++
-              return { ...doc, ...updateFields }
+              return applyUpdate(doc, updateFields)
+            }
+            return doc
+          })
+
+          write(data)
+          return { updatedCount }
+        },
+
+        updateOne(filter, updateFields) {
+          const data = read()
+          let updatedCount = 0
+
+          data[name] = data[name].map(doc => {
+            if (updatedCount === 0 && matchFilter(doc, filter)) {
+              updatedCount++
+              return applyUpdate(doc, updateFields)
             }
             return doc
           })
@@ -151,6 +194,22 @@ function db(path) {
           return {
             deletedCount: originalLength - data[name].length
           }
+        },
+
+        deleteOne(filter) {
+          const data = read()
+          let deletedCount = 0
+
+          data[name] = data[name].filter(doc => {
+            if (deletedCount === 0 && matchFilter(doc, filter)) {
+              deletedCount++
+              return false
+            }
+            return true
+          })
+
+          write(data)
+          return { deletedCount }
         }
       }
     }

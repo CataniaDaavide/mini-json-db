@@ -21,15 +21,27 @@ const users = database.collection("users")
 // Inserimento
 users.insert({ name: "Luca", age: 22 })
 users.insert({ name: "Marco", age: 25 })
+users.insert({ name: "Giulia", age: 30 })
 
 // Ricerca
 console.log("Find Luca:", users.find({ name: "Luca" }))
 console.log("FindOne Marco:", users.findOne({ name: "Marco" }))
 
 // Update
-users.update({ name: "Luca" }, { age: 23 })
+users.update({ name: "Luca" }, { $inc: { age: 1 } })
 console.log("After update:", users.find({ name: "Luca" }))
+
+// UpdateOne
+users.updateOne({ age: { $gt: 25 } }, { $set: { senior: true } })
+console.log("After updateOne:", users.find())
 
 // Delete
 users.delete({ name: "Marco" })
 console.log("After delete:", users.find())
+
+// DeleteOne
+users.deleteOne({ age: { $gt: 25 } })
+console.log("After deleteOne:", users.find())
+
+// Find con operatori
+console.log("Find age > 20:", users.find({ age: { $gt: 20 } }))
